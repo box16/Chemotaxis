@@ -2,25 +2,83 @@ import copy
 import random
 import time
 
-PREY = "×"
 
-ROW = range(5)
-COLUMN = range(5)
+class Nature():
+    def __init__(self):
+        self.mark = None
+
+    def get_mark(self):
+        return self.mark
+
+
+class Creature(Nature):
+    def __init__(self, row_pos, column_pos):
+        self.mark = None
+        self.row_pos = row_pos
+        self.column_pos = column_pos
+
+    def suggest_next_pos(self):
+        move_direction = [-1, 0, 1]
+        row_move = random.choice(move_direction)
+        column_move = random.choice(move_direction)
+        return (self.row_pos + row_move,
+                self.column_pos + column_move)
+
+    def get_pos(self):
+        return (self.row_pos, self.column_pos)
+
+    def set_pos(self, row_pos, column_pos):
+        self.row_pos = row_pos
+        self.column_pos = column_pos
+
+
+class Predator(Creature):
+    def __init__(self, row_pos, column_pos):
+        super().__init__(row_pos, column_pos)
+        self.mark = "O"
+
+
+class Prey(Creature):
+    def __init__(self, row_pos, column_pos):
+        super().__init__(row_pos, column_pos)
+        self.mark = "X"
+
+
+class Terrain(Nature):
+    def __init__(self):
+        self.mark = None
+
+
+class Flat(Terrain):
+    def __init__(self):
+        self.mark = "-"
+
+
+class Cell():
+    def __init__(self, nature):
+        self.nature = nature
+
+    def change_nature(self, nature):
+        self.nature = nature
+
+    def get_mark(self):
+        return self.nature.get_mark()
 
 
 class Field():
-    def __init__(self, row, column):
-        self.field = [["-" for i in range(column)] for j in range(row)]
+    def __init__(self, row_num, column_num, nature):
+        self.field = [[Cell(nature) for i in range(column_num)]
+                      for j in range(row_num)]
 
     def print_field(self):
         for line in self.field:
             for element in line:
-                print(element, end="  ")
+                print(element.get_mark(), end="  ")
             print()
         print("\n=======================\n")
 
-    def update_field(self, row, column, mark="-"):
-        self.field[row][column] = mark
+    def change_nature(self, row, column, nature):
+        self.field[row][column].change_nature(nature)
 
     def check_field_over(self, row, column):
         if (row < 0) or (row >= len(self.field)):
@@ -30,58 +88,60 @@ class Field():
         else:
             return False
 
-
-class Predator():
-    def __init__(self):
-        self.mark = "〇"
-        self.pos_row = 0
-        self.pos_column = 0
-
-    def get_mark(self):
-        return self.mark
-
-    def update_pos(self, row, column):
-        self.pos_row = row
-        self.pos_column = column
-
-    def get_pos(self):
-        return (self.pos_row, self.pos_column)
+    def get_mark(self, row, column):
+        return self.field[row][column].get_mark()
 
 
-def suggest_next_pos(row, column):
-    move_direction = [-1, 0, 1]
-    move_row = random.choice(move_direction)
-    move_column = random.choice(move_direction)
-    next_row = row + move_row
-    next_column = column + move_column
-    return (next_row, next_column)
+ROW = 10
+COLUMN = 10
 
+
+def find_flat_pos(field):
+    while(True):
+        row = random.choice(range(ROW))
+        column = random.choice(range(COLUMN))
+        if(field.get_mark(row, column) == Flat().get_mark()):
+            return (row, column)
+
+
+def random_move_predator(field, predator):
+    while(True):
+        now_pos = predator.get_pos()
+        suggest_pos = predator.suggest_next_pos()
+        if (field.check_field_over(suggest_pos[0],
+                                   suggest_pos[1])):
+            continue
+        if(now_pos == suggest_pos):
+            continue
+        predator.set_pos(suggest_pos[0],
+                         suggest_pos[1])
+        field.change_nature(predator.get_pos()[0],
+                            predator.get_pos()[1],
+                            predator)
+        field.change_nature(now_pos[0],
+                            now_pos[1],
+                            Flat())
+        return
 
 if __name__ == "__main__":
-    ROW = 10
-    COLUMN = 10
-    field = Field(ROW, COLUMN)
-    predator = Predator()
+    field = Field(ROW, COLUMN, Flat())
+
+    pos = find_flat_pos(field)
+    predator = Predator(pos[0], pos[1])
+
+    pos = find_flat_pos(field)
+    prey = Prey(pos[0], pos[1])
+
+    field.change_nature(predator.get_pos()[0],
+                        predator.get_pos()[1],
+                        predator)
+    field.change_nature(prey.get_pos()[0],
+                        prey.get_pos()[1],
+                        prey)
 
     field.print_field()
 
     while(True):
-        # Predatorの現在位置取得
-        now_pos = predator.get_pos()
-
-        # Predatorの移動位置決定
-        next_pos = suggest_next_pos(now_pos[0], now_pos[1])
-        if field.check_field_over(next_pos[0], next_pos[1]):
-            continue
-        elif now_pos == next_pos:
-            continue
-        else:
-            predator.update_pos(next_pos[0], next_pos[1])
-
-        # Fieldの更新
-        field.update_field(now_pos[0], now_pos[1])
-        next_pos = predator.get_pos()
-        field.update_field(next_pos[0], next_pos[1], mark=predator.get_mark())
-
+        random_move_predator(field,predator)
         field.print_field()
         time.sleep(1)
