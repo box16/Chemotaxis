@@ -36,6 +36,13 @@ class Predator(Creature):
     def __init__(self, row_pos, column_pos):
         super().__init__(row_pos, column_pos)
         self.mark = "O"
+        self.search_radius = 5
+    
+    def get_search_range(self):
+        return ((self.row_pos - self.search_radius,
+                 self.column_pos - self.search_radius),
+                (self.row_pos + self.search_radius,
+                 self.column_pos + self.search_radius))
 
 
 class Prey(Creature):
@@ -75,7 +82,6 @@ class Field():
             for element in line:
                 print(element.get_mark(), end="  ")
             print()
-        print("\n=======================\n")
 
     def change_nature(self, row, column, nature):
         self.field[row][column].change_nature(nature)
@@ -92,8 +98,8 @@ class Field():
         return self.field[row][column].get_mark()
 
 
-ROW = 10
-COLUMN = 10
+ROW = 20
+COLUMN = 20
 
 
 def find_flat_pos(field):
@@ -123,25 +129,60 @@ def random_move_predator(field, predator):
                             Flat())
         return
 
+def move_predator_for_prey(field, predator,prey_row,prey_column):
+    predator_row = predator.get_pos()[0]
+    predator_column = predator.get_pos()[1]
+    diff_row = prey_row - predator_row
+    diff_column = prey_column - predator_column
+    move_row = 0 if diff_row == 0 else int(diff_row/abs(diff_row))
+    move_column = 0 if diff_column == 0 else int(diff_column/abs(diff_column))
+    predator.set_pos(predator_row + move_row,
+                     predator_column + move_column)
+    field.change_nature(predator.get_pos()[0],
+                        predator.get_pos()[1],
+                        predator)
+    field.change_nature(predator_row,
+                        predator_column,
+                        Flat())
+    return
+
+def search_prey(field, predator):
+    search_range = predator.get_search_range()
+    min_row = search_range[0][0]
+    max_row = search_range[1][0]
+    min_column = search_range[0][1]
+    max_column = search_range[1][1]
+    for i in range(min_row,max_row):
+        for j in range(min_column,max_column):
+            if(field.check_field_over(i,j)):
+                continue
+            if(field.get_mark(i, j) == Prey(0,0).get_mark()):
+                return (i,j)
+    return None
+
 if __name__ == "__main__":
     field = Field(ROW, COLUMN, Flat())
 
     pos = find_flat_pos(field)
     predator = Predator(pos[0], pos[1])
-
-    pos = find_flat_pos(field)
-    prey = Prey(pos[0], pos[1])
-
     field.change_nature(predator.get_pos()[0],
                         predator.get_pos()[1],
                         predator)
-    field.change_nature(prey.get_pos()[0],
-                        prey.get_pos()[1],
-                        prey)
 
-    field.print_field()
+    preys = [0,0,0]
+    for i in range(3):
+        pos = find_flat_pos(field)
+        preys[i] = Prey(pos[0], pos[1])
+        field.change_nature(preys[i].get_pos()[0],
+                            preys[i].get_pos()[1],
+                            preys[i])
 
     while(True):
-        random_move_predator(field,predator)
         field.print_field()
-        time.sleep(1)
+        prey_pos = search_prey(field, predator)
+        if prey_pos:
+            move_predator_for_prey(field, predator,prey_pos[0],prey_pos[1])
+        else:
+            random_move_predator(field,predator)
+        print("\n=======================\n")
+        time.sleep(0.1)
