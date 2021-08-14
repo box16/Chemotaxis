@@ -160,6 +160,13 @@ def search_prey(field, predator):
                 return (i,j)
     return None
 
+def create_prey(field):
+    pos = find_flat_pos(field)
+    preys = Prey(pos[0], pos[1])
+    field.change_nature(preys.get_pos()[0],
+                        preys.get_pos()[1],
+                        preys)
+
 if __name__ == "__main__":
     field = Field(ROW, COLUMN, Flat())
 
@@ -169,14 +176,9 @@ if __name__ == "__main__":
                         predator.get_pos()[1],
                         predator)
 
-    preys = [0,0,0]
     for i in range(3):
-        pos = find_flat_pos(field)
-        preys[i] = Prey(pos[0], pos[1])
-        field.change_nature(preys[i].get_pos()[0],
-                            preys[i].get_pos()[1],
-                            preys[i])
-
+        create_prey(field)
+        
     while(True):
         field.print_field()
         prey_pos = search_prey(field, predator)
@@ -184,5 +186,8 @@ if __name__ == "__main__":
             move_predator_for_prey(field, predator,prey_pos[0],prey_pos[1])
         else:
             random_move_predator(field,predator)
+        
+        if random.choice(range(100)) < 5:
+            create_prey(field)
         print("\n=======================\n")
         time.sleep(0.1)
